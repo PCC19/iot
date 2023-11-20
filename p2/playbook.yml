@@ -1,0 +1,188 @@
+---
+
+- name: Install general dependencies
+  hosts: k3s
+  become: yes
+  gather_facts: yes
+  tasks:
+    - name: Ping host
+      ansible.builtin.ping:
+    - name: Update cache and install dependencies
+      ansible.builtin.apt:
+        update_cache: yes
+        name:
+          - curl
+          - apt-transport-https
+          - ca-certificates
+          - gpg
+          - python3-yaml
+        state: present
+
+- name: Install kubectl
+  hosts: k3s
+  become: yes
+  tasks:
+    - name: Add Kubernetes APT repository signing key
+      ansible.builtin.apt_key:
+        url: https://pkgs.k8s.io/core:/stable:/v1.28/deb/Release.key
+        keyring: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+    - name: Add Kubernetes APT repository
+      ansible.builtin.apt_repository:
+        repo: deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.28/deb/ /
+        state: present
+    - name: Install kubectl
+      ansible.builtin.apt:
+        update_cache: yes
+        name:
+          - kubectl
+        state: present
+
+- name: Install helm
+  hosts: k3s
+  become: yes
+  tasks:
+    - name: Add Helm APT repository signing key
+      ansible.builtin.apt_key:
+        url: https://baltocdn.com/helm/signing.asc
+        keyring: /usr/share/keyrings/helm.gpg
+    - name: Get DPKG architecture
+      shell: dpkg --print-architecture
+      register: arch
+    - name: Add Helm APT repository
+      ansible.builtin.apt_repository:
+        repo: deb [arch={{ arch.stdout }} signed-by=/usr/share/keyrings/helm.gpg] https://baltocdn.com/helm/stable/debian/ all main
+        state: present
+    - name: Install helm
+      ansible.builtin.apt:
+        update_cache: yes
+        name:
+          - helm
+        state: present
+
+- name: Install k3s bootstrap server
+  hosts: k3s
+  become: yes
+  vars:
+    server_ip: "{{ hostvars['aroqueS']['ansible_eth1']['ipv4'].address }}"
+  tasks:
+    - name: Ping host
+      ansible.builtin.ping:
+    - name: Install k3s server
+      environment:
+        K3S_NODE_NAME: "{{ inventory_hostname }}"
+        K3S_KUBECONFIG_MODE: "644"
+      shell: >
+        curl -sfL https://get.k3s.io | sh -s - server --cluster-init
+        --flannel-iface eth1
+        --bind-address {{ server_ip }}
+    - name: Extract kubeconfig
+      slurp:
+        path: /etc/rancher/k3s/k3s.yaml
+      register: kubeconfig
+    - name: Set K3S_TOKEN and kubeconfig as facts
+      set_fact:
+        kubeconfig: "{{ kubeconfig['content'] | b64decode | from_yaml }}"
+
+- name: Fetch kubeconfig
+  hosts: k3s
+  vars:
+    server_ip: "{{ hostvars['aroqueS']['ansible_eth1']['ipv4'].address }}"
+    kubeconfig: "{{ hostvars['aroqueS']['kubeconfig'] }}"
+  tasks:
+    - name: Ping hosts
+      ansible.builtin.ping:
+    - name: Create .kube directory
+      ansible.builtin.file:
+        path: $HOME/.kube
+        state: directory
+        mode: '0755'
+    - name: Copy kubeconfig to node
+      ansible.builtin.copy:
+        content: "{{ kubeconfig | to_nice_yaml }}"
+        dest: $HOME/.kube/config
+    - name: Fetch kubeconfig to host
+      become: yes
+      ansible.builtin.fetch:
+        src: /etc/rancher/k3s/k3s.yaml
+        dest: ~/.kube/config
+        flat: yes
+      when: ansible_hostname == k3s_server
+
+- name: Install cluster add-ons
+  hosts: k3s
+  tasks:
+    - name: Ping hosts
+      ansible.builtin.ping:
+    - name: Add traefik ingress controller helm repository
+      kubernetes.core.helm_repository:
+        name: traefik
+        repo_url: https://traefik.github.io/charts
+    - name: Apply traefik ingress controller
+      kubernetes.core.helm:
+        name: traefik
+        chart_ref: traefik/traefik
+        release_namespace: kube-system
+
+- name: Install application helm chart
+  hosts: k3s
+  become: yes
+  tasks:
+    - name: Copy helm chart directory
+      ansible.builtin.copy:
+        src: hello-kubernetes
+        dest: /home/vagrant
+    - name: Set app helm chart repository directory as a fact
+      set_fact:
+        chart_ref: /home/vagrant/hello-kubernetes
+
+- name: Install hello world apps
+  hosts: k3s
+  tasks:
+    - name: Ping hosts
+      ansible.builtin.ping:
+    - name: Deploy app1
+      kubernetes.core.helm:
+        name: app1
+        chart_ref: "{{ chart_ref }}"
+        release_namespace: app1
+        create_namespace: yes
+        values:
+          message: Hello world from app1!
+          ingress:
+            enabled: true
+            hosts:
+              - host: "app1.com"
+                paths:
+                - path: /
+                  pathType: Prefix
+    - name: Deploy app2
+      kubernetes.core.helm:
+        name: app2
+        chart_ref: "{{ chart_ref }}"
+        release_namespace: app2
+        create_namespace: yes
+        values:
+          message: Hello world from app2!
+          deployment:
+            replicaCount: 3
+          ingress:
+            enabled: true
+            hosts:
+              - host: "app2.com"
+                paths:
+                - path: /
+                  pathType: Prefix
+    - name: Deploy app3
+      kubernetes.core.helm:
+        name: app3
+        chart_ref: "{{ chart_ref }}"
+        release_namespace: app3
+        create_namespace: yes
+        values:
+          message: Hello world from app3!
+          ingress:
+            enabled: true
+            hosts:
+              - paths:
+                - path: /
+                  pathType: Prefix
