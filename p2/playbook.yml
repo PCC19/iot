@@ -107,22 +107,6 @@
         dest: ~/.kube/config
         flat: yes
       when: ansible_hostname == k3s_server
-
-- name: Install cluster add-ons
-  hosts: k3s
-  tasks:
-    - name: Ping hosts
-      ansible.builtin.ping:
-    - name: Add traefik ingress controller helm repository
-      kubernetes.core.helm_repository:
-        name: traefik
-        repo_url: https://traefik.github.io/charts
-    - name: Apply traefik ingress controller
-      kubernetes.core.helm:
-        name: traefik
-        chart_ref: traefik/traefik
-        release_namespace: kube-system
-
 - name: Install application helm chart
   hosts: k3s
   become: yes
@@ -134,7 +118,6 @@
     - name: Set app helm chart repository directory as a fact
       set_fact:
         chart_ref: /home/vagrant/hello-kubernetes
-
 - name: Install hello world apps
   hosts: k3s
   tasks:
