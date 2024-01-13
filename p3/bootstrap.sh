@@ -25,15 +25,21 @@ curl -sSL -o argocd-linux-amd64 https://github.com/argoproj/argo-cd/releases/lat
 sudo install -m 555 argocd-linux-amd64 /usr/local/bin/argocd
 rm argocd-linux-amd64
 
-#############
-
 # Create k3d cluster
-k3d cluster create p3 --api-port 6550 --servers 1 --agents 2
+k3d cluster create p3 --api-port 6550 -p "8081:80@loadbalancer" --servers 1 --agents 2
 
 # Install ArgoCD
 kubectl create namespace argocd
+kubectl config set-context --current --namespace=argocd
 kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+kubectl patch deployment argocd-server -n argocd -p '{"spec": {"template": {"spec": {"containers": [{"name": "argocd-server", "args": ["/usr/local/bin/argocd-server", "--insecure", "--rootpath", "/argo-cd"]}]}}}}'
+kubectl wait --for=condition=Ready pod -l app.kubernetes.io/name=argocd-server -n argocd --timeout=300s
+kubectl apply -f ./argocd-ingress-route.yaml
 
-# Install wil application
+argocd login --core
+argocd cluster add k3d-p3
+
+# Install inspektor application
 kubectl create namespace dev
+argocd app create inspektor --repo https://github.com/AdrianWR/inspektor.git --path deployments --dest-server https://kubernetes.default.svc --dest-namespace dev
 
