@@ -34,6 +34,9 @@ https://ubuntu.com/download/desktop
 ```bash
 sudo apt-get install -y vim git vagrant net-tools ansible qemu-kvm libvirt-daemon-system
 ``` 
+```bash
+sudo ansible-galaxy collection install kubernetes.core
+```
 
 ```bash
 sudo usermod -a -G libvirt $USER
@@ -42,4 +45,3 @@ sudo usermod -a -G libvirt $USER
 ```bash
 su $USER  #(or simply log in again)
 ``` 
-
