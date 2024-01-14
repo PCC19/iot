@@ -15,8 +15,13 @@
           - apt-transport-https
           - ca-certificates
           - gpg
+          - python3
           - python3-yaml
+          - python3-pip
+          - python3-kubernetes
         state: present
+
+
 
 - name: Install kubectl
   hosts: k3s
@@ -37,33 +42,12 @@
           - kubectl
         state: present
 
-- name: Install helm
-  hosts: k3s
-  become: yes
-  tasks:
-    - name: Add Helm APT repository signing key
-      ansible.builtin.apt_key:
-        url: https://baltocdn.com/helm/signing.asc
-        keyring: /usr/share/keyrings/helm.gpg
-    - name: Get DPKG architecture
-      shell: dpkg --print-architecture
-      register: arch
-    - name: Add Helm APT repository
-      ansible.builtin.apt_repository:
-        repo: deb [arch={{ arch.stdout }} signed-by=/usr/share/keyrings/helm.gpg] https://baltocdn.com/helm/stable/debian/ all main
-        state: present
-    - name: Install helm
-      ansible.builtin.apt:
-        update_cache: yes
-        name:
-          - helm
-        state: present
 
 - name: Install k3s bootstrap server
   hosts: k3s
   become: yes
   vars:
-    server_ip: "{{ hostvars['aroqueS']['ansible_eth1']['ipv4'].address }}"
+    server_ip: "{{ hostvars[k3s_server]['ansible_eth1']['ipv4'].address }}"
   tasks:
     - name: Ping host
       ansible.builtin.ping:
@@ -86,8 +70,8 @@
 - name: Fetch kubeconfig
   hosts: k3s
   vars:
-    server_ip: "{{ hostvars['aroqueS']['ansible_eth1']['ipv4'].address }}"
-    kubeconfig: "{{ hostvars['aroqueS']['kubeconfig'] }}"
+    server_ip: "{{ hostvars[k3s_server]['ansible_eth1']['ipv4'].address }}"
+    kubeconfig: "{{ hostvars[k3s_server]['kubeconfig'] }}"
   tasks:
     - name: Ping hosts
       ansible.builtin.ping:
@@ -107,65 +91,89 @@
         dest: ~/.kube/config
         flat: yes
       when: ansible_hostname == k3s_server
-- name: Install application helm chart
+
+
+- name: Install hello world apps with kubectl2
   hosts: k3s
   become: yes
+  vars:
+    kubeconfig: "{{ hostvars[k3s_server]['kubeconfig'] }}"
+
   tasks:
-    - name: Copy helm chart directory
-      ansible.builtin.copy:
-        src: hello-kubernetes
-        dest: /home/vagrant
-    - name: Set app helm chart repository directory as a fact
-      set_fact:
-        chart_ref: /home/vagrant/hello-kubernetes
-- name: Install hello world apps
-  hosts: k3s
-  tasks:
-    - name: Ping hosts
-      ansible.builtin.ping:
-    - name: Deploy app1
-      kubernetes.core.helm:
-        name: app1
-        chart_ref: "{{ chart_ref }}"
-        release_namespace: app1
-        create_namespace: yes
-        values:
-          message: Hello world from app1!
-          ingress:
-            enabled: true
-            hosts:
-              - host: "app1.com"
-                paths:
-                - path: /
-                  pathType: Prefix
-    - name: Deploy app2
-      kubernetes.core.helm:
-        name: app2
-        chart_ref: "{{ chart_ref }}"
-        release_namespace: app2
-        create_namespace: yes
-        values:
-          message: Hello world from app2!
-          deployment:
-            replicaCount: 3
-          ingress:
-            enabled: true
-            hosts:
-              - host: "app2.com"
-                paths:
-                - path: /
-                  pathType: Prefix
-    - name: Deploy app3
-      kubernetes.core.helm:
-        name: app3
-        chart_ref: "{{ chart_ref }}"
-        release_namespace: app3
-        create_namespace: yes
-        values:
-          message: Hello world from app3!
-          ingress:
-            enabled: true
-            hosts:
-              - paths:
-                - path: /
-                  pathType: Prefix
+    - name: Install hello world apps with kubectl
+      kubernetes.core.k8s:
+        kubeconfig: "{{ kubeconfig }}"
+        namespace: default
+        state: present
+        src: '{{ item.src }}'
+      with_items:
+          - name: appone
+            src: "/vagrant/apps/appone.yaml"
+          - name: apptwo
+            src: "/vagrant/apps/apptwo.yaml"
+          - name: appthree
+            src: "/vagrant/apps/appthree.yaml"
+
+#- name: Install application helm chart
+#  hosts: k3s
+#  become: yes
+#  tasks:
+#    - name: Copy helm chart directory
+#      ansible.builtin.copy:
+#        src: hello-kubernetes
+#        dest: /home/vagrant
+#    - name: Set app helm chart repository directory as a fact
+#      set_fact:
+#        chart_ref: /home/vagrant/hello-kubernetes
+#- name: Install hello world apps
+#  hosts: k3s
+#  tasks:
+#    - name: Ping hosts
+#      ansible.builtin.ping:
+#    - name: Deploy app1
+#      kubernetes.core.helm:
+#        name: app1
+#        chart_ref: "{{ chart_ref }}"
+#        release_namespace: app1
+#        create_namespace: yes
+#        values:
+#          message: Hello world from app1!
+#          ingress:
+#            enabled: true
+#            hosts:
+#              - host: "app1.com"
+#                paths:
+#                - path: /
+#                  pathType: Prefix
+#    - name: Deploy app2
+#      kubernetes.core.helm:
+#        name: app2
+#        chart_ref: "{{ chart_ref }}"
+#        release_namespace: app2
+#        create_namespace: yes
+#        values:
+#          message: Hello world from app2!
+#          deployment:
+#            replicaCount: 3
+#          ingress:
+#            enabled: true
+#            hosts:
+#              - host: "app2.com"
+#                paths:
+#                - path: /
+#                  pathType: Prefix
+#    - name: Deploy app3
+#      kubernetes.core.helm:
+#        name: app3
+#        chart_ref: "{{ chart_ref }}"
+#        release_namespace: app3
+#        create_namespace: yes
+#        values:
+#          message: Hello world from app3!
+#          ingress:
+#            enabled: true
+#            hosts:
+#              - paths:
+#                - path: /
+#                  pathType: Prefix
+#

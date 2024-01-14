@@ -7,30 +7,39 @@ This project uses vagrant, libvirt as provider and ansible as provisioner.
 
 # Setting up the Virtual Machine
 
-## 1. Create a new VM on your favorite hypervisor. 
+### 1. Create a new VM on your favorite hypervisor. 
 
-## 2. Enable hypervisor application in the virtual machine
+### 2. Enable hypervisor application in the virtual machine
 
-### On Vmware
+#### On Vmware
 
 Settings->Processors&Memory->Enable Hypervisor applications
 
-### On virtualbox:
+#### On virtualbox:
 
 Settings->System->Processor->Enable Nested VT-x
 
-if grayed out (some processors):
-`VBoxManage modifyvm MACHINE_NAME --nested-hw-virt on`
 
-3. Install Ubuntu 22.04 LTS
+```bash
+# if grayed out (some processors, run):
+VBoxManage modifyvm MACHINE_NAME --nested-hw-virt on
+```
+
+### 3. Install Ubuntu 22.04 LTS
 https://ubuntu.com/download/desktop
 
-optional: install vmtools or guest additions to allow copy/paste
+> optional: install vmtools or guest additions to allow copy/paste
 
-4. Set up requirements
-`sudo apt-get install -y vim git vagrant net-tools ansible qemu-kvm libvirt-daemon-system`
+### 4. Set up requirements
+```bash
+sudo apt-get install -y vim git vagrant net-tools ansible qemu-kvm libvirt-daemon-system
+``` 
 
-`sudo usermod -a -G libvirt $USER`
+```bash
+sudo usermod -a -G libvirt $USER
+``` 
 
-`su $USER` (or log in again)
+```bash
+su $USER  #(or simply log in again)
+``` 
 
