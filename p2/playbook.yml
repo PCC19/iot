@@ -21,7 +21,11 @@
           - python3-pip
           - python3-kubernetes
         state: present
-
+    - name: Add net-tools path (/sbin) to system-wide $PATH.
+      ansible.builtin.copy:
+        dest: /etc/profile.d/custom-path.sh
+        content: 'PATH=$PATH:/sbin/'
+        mode: "0644"
 
 - name: Install kubectl
   hosts: k3s

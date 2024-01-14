@@ -17,6 +17,11 @@
           - gpg
           - net-tools
         state: present
+    - name: Add net-tools path (/sbin) to system-wide $PATH.
+      ansible.builtin.copy:
+        dest: /etc/profile.d/custom-path.sh
+        content: 'PATH=$PATH:/sbin/'
+        mode: "0644"
     - name: Add Kubernetes APT repository signing key
       ansible.builtin.apt_key:
         url: https://pkgs.k8s.io/core:/stable:/v1.28/deb/Release.key
