@@ -22,7 +22,6 @@
         state: present
 
 
-
 - name: Install kubectl
   hosts: k3s
   become: yes
@@ -67,6 +66,7 @@
       set_fact:
         kubeconfig: "{{ kubeconfig['content'] | b64decode | from_yaml }}"
 
+
 - name: Fetch kubeconfig
   hosts: k3s
   vars:
@@ -93,14 +93,13 @@
       when: ansible_hostname == k3s_server
 
 
-- name: Install hello world apps with kubectl2
+- name: Deploy Applications
   hosts: k3s
   become: yes
   vars:
     kubeconfig: "{{ hostvars[k3s_server]['kubeconfig'] }}"
-
   tasks:
-    - name: Install hello world apps with kubectl
+    - name: Deploys each app's deployment/service/ingress
       kubernetes.core.k8s:
         kubeconfig: "{{ kubeconfig }}"
         namespace: default
@@ -113,67 +112,3 @@
             src: "/vagrant/apps/apptwo.yaml"
           - name: appthree
             src: "/vagrant/apps/appthree.yaml"
-
-#- name: Install application helm chart
-#  hosts: k3s
-#  become: yes
-#  tasks:
-#    - name: Copy helm chart directory
-#      ansible.builtin.copy:
-#        src: hello-kubernetes
-#        dest: /home/vagrant
-#    - name: Set app helm chart repository directory as a fact
-#      set_fact:
-#        chart_ref: /home/vagrant/hello-kubernetes
-#- name: Install hello world apps
-#  hosts: k3s
-#  tasks:
-#    - name: Ping hosts
-#      ansible.builtin.ping:
-#    - name: Deploy app1
-#      kubernetes.core.helm:
-#        name: app1
-#        chart_ref: "{{ chart_ref }}"
-#        release_namespace: app1
-#        create_namespace: yes
-#        values:
-#          message: Hello world from app1!
-#          ingress:
-#            enabled: true
-#            hosts:
-#              - host: "app1.com"
-#                paths:
-#                - path: /
-#                  pathType: Prefix
-#    - name: Deploy app2
-#      kubernetes.core.helm:
-#        name: app2
-#        chart_ref: "{{ chart_ref }}"
-#        release_namespace: app2
-#        create_namespace: yes
-#        values:
-#          message: Hello world from app2!
-#          deployment:
-#            replicaCount: 3
-#          ingress:
-#            enabled: true
-#            hosts:
-#              - host: "app2.com"
-#                paths:
-#                - path: /
-#                  pathType: Prefix
-#    - name: Deploy app3
-#      kubernetes.core.helm:
-#        name: app3
-#        chart_ref: "{{ chart_ref }}"
-#        release_namespace: app3
-#        create_namespace: yes
-#        values:
-#          message: Hello world from app3!
-#          ingress:
-#            enabled: true
-#            hosts:
-#              - paths:
-#                - path: /
-#                  pathType: Prefix
-#
