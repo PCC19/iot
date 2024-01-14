@@ -15,6 +15,7 @@
           - apt-transport-https
           - ca-certificates
           - gpg
+          - net-tools
         state: present
     - name: Add Kubernetes APT repository signing key
       ansible.builtin.apt_key:
