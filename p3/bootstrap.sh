@@ -1,10 +1,9 @@
 #!/usr/bin/bash
 
-LOAD_BALANCER_PORT=${1:-8081}
+LOAD_BALANCER_PORT=8081
 CLUSTERNAME="p3"
 RED="\e[1;96m"
 ENDCOLOR="\e[0m"
-
 
 
 # Install required packages
@@ -48,7 +47,7 @@ sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
 
 # "Create k3d cluster"
 echo -e "${RED}Create k3d cluster${ENDCOLOR}"
-sg docker -c "k3d cluster create ${CLUSTERNAME} --api-port 6550 -p ${LOAD_BALANCER_PORT}:80@loadbalancer --servers 1 --agents 2 --kubeconfig-update-default"
+sg docker -c "k3d cluster create ${CLUSTERNAME} --api-port 6550 -p ${LOAD_BALANCER_PORT}:80@loadbalancer --servers 1 --agents 2 --kubeconfig-update-default --kubeconfig-switch-context"
 
 
 # "Install ArgoCD CLI"
@@ -70,7 +69,7 @@ kubectl patch deployment argocd-server -n argocd -p '{\"spec\": {\"template\": {
 
 #Wait for Kubectl
 echo -e "${RED}Waiting for Kubectl${ENDCOLOR}"
-sg docker -c 'kubectl wait --for=condition=Ready pod -l "app.kubernetes.io/name=argocd-server" -n argocd --timeout=120s'
+sg docker -c 'kubectl wait --for=condition=Ready pod -l "app.kubernetes.io/name=argocd-server" -n argocd --timeout=60s'
 
 
 #Apply Ingress Route
@@ -78,38 +77,31 @@ echo -e "${RED}Applying Ingress Route${ENDCOLOR}"
 
 sg docker -c "
 cat <<EOF | kubectl apply -f -
-apiVersion: traefik.containo.us/v1alpha1
-kind: IngressRoute
+apiVersion: networking.k8s.io/v1
+kind: Ingress
 metadata:
-  name: argocd-server
+  name: argocd-ingress
   namespace: argocd
 spec:
-  entryPoints:
-    - web
-  routes:
-    - kind: Rule
-      match: PathPrefix('/argo-cd')
-      priority: 10
-      services:
-        - name: argocd-server
-          port: 80
-    - kind: Rule
-      match: Host('/argo-cd') && Headers('Content-Type', 'application/grpc')
-      priority: 11
-      services:
-        - name: argocd-server
-          port: 80
-          scheme: h2c
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: argocd-server
+                port:
+                  number: 80
 EOF
 "
-
 
 sg docker -c "argocd login --core"
 
 
 echo -e "${RED}Add Cluster${ENDCOLOR}"
 sg docker -c "
-argocd cluster add k3d-${CLUSTERNAME}
+argocd cluster add k3d-${CLUSTERNAME} -y
 "
 
 # "Install inspektor application"
@@ -117,7 +109,7 @@ echo -e "${RED}Install inspektor application${ENDCOLOR}"
 
 sg docker -c "
 kubectl create namespace dev
-argocd app create inspektor --repo https://github.com/AdrianWR/inspektor.git --path deployments --dest-server https://kubernetes.default.svc --dest-namespace dev
+argocd app create inspektor --repo https://github.com/AdrianWR/inspektor-aroque.git --path deployments --dest-server https://kubernetes.default.svc --sync-policy auto --dest-namespace dev
 "
 
 # Print ArgoCD credentials
