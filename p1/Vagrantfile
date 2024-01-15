@@ -3,10 +3,10 @@
 
 USERNAME = "aroque"
 
-CONTROL_PLANE_NAME = "aroqueS"
+CONTROL_PLANE_NAME = USERNAME + "S"
 CONTROL_PLANE_IP = "192.168.56.110"
 
-NODE_NAME = "aroqueSW"
+NODE_NAME = USERNAME + "SW"
 NODE_IP = "192.168.56.111"
 
 Vagrant.configure("2") do |config|
@@ -16,7 +16,6 @@ Vagrant.configure("2") do |config|
     libvirt.memory = 1024
     libvirt.default_prefix = ""
     libvirt.driver = "kvm"
-    #libvirt.username = USERNAME
   end
 
   config.vm.define CONTROL_PLANE_NAME do |control_plane|

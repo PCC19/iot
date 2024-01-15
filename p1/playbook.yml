@@ -15,7 +15,13 @@
           - apt-transport-https
           - ca-certificates
           - gpg
+          - net-tools
         state: present
+    - name: Add net-tools path (/sbin) to system-wide $PATH.
+      ansible.builtin.copy:
+        dest: /etc/profile.d/custom-path.sh
+        content: 'PATH=$PATH:/sbin/'
+        mode: "0644"
     - name: Add Kubernetes APT repository signing key
       ansible.builtin.apt_key:
         url: https://pkgs.k8s.io/core:/stable:/v1.28/deb/Release.key
@@ -35,7 +41,7 @@
   hosts: k3s_server
   become: yes
   vars:
-    server_ip: "{{ hostvars['aroqueS']['ansible_eth1']['ipv4'].address }}"
+    server_ip: "{{ hostvars[k3s_server]['ansible_eth1']['ipv4'].address }}"
   tasks:
     - name: Ping host
       ansible.builtin.ping:
@@ -60,9 +66,9 @@
   become: yes
   hosts: k3s_agent
   vars:
-    k3s_token: "{{ hostvars['aroqueS']['k3s_token'] }}"
-    server_ip: "{{ hostvars['aroqueS']['ansible_eth1']['ipv4'].address }}"
-    node_ip: "{{ hostvars['aroqueSW']['ansible_eth1']['ipv4'].address }}"
+    k3s_token: "{{ hostvars[k3s_server]['k3s_token'] }}"
+    server_ip: "{{ hostvars[k3s_server]['ansible_eth1']['ipv4'].address }}"
+    node_ip: "{{ hostvars[k3s_agent]['ansible_eth1']['ipv4'].address }}"
   tasks:
     - name: Ping hosts
       ansible.builtin.ping:
@@ -76,8 +82,8 @@
 - name: Fetch kubeconfig
   hosts: k3s
   vars:
-    server_ip: "{{ hostvars['aroqueS']['ansible_eth1']['ipv4'].address }}"
-    kubeconfig: "{{ hostvars['aroqueS']['kubeconfig'] }}"
+    server_ip: "{{ hostvars[k3s_server]['ansible_eth1']['ipv4'].address }}"
+    kubeconfig: "{{ hostvars[k3s_server]['kubeconfig'] }}"
   tasks:
     - name: Ping hosts
       ansible.builtin.ping:
