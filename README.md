@@ -30,6 +30,10 @@ https://ubuntu.com/download/desktop
 
 > optional: install vmtools or guest additions to allow copy/paste
 
+```bash
+sudo apt-get update && sudo apt-get install open-vm-tools-desktop
+```
+
 ### 4. Set up requirements
 ```bash
 sudo apt-get install -y vim git vagrant net-tools ansible qemu-kvm libvirt-daemon-system

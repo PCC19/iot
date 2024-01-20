@@ -112,8 +112,8 @@
         src: '{{ item.src }}'
       with_items:
           - name: appone
-            src: "/vagrant/apps/appone.yaml"
+            src: "/vagrant/confs/appone.yaml"
           - name: apptwo
-            src: "/vagrant/apps/apptwo.yaml"
+            src: "/vagrant/confs/apptwo.yaml"
           - name: appthree
-            src: "/vagrant/apps/appthree.yaml"
+            src: "/vagrant/confs/appthree.yaml"

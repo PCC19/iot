@@ -1,0 +1,10 @@
+git_protocol: ssh
+editor: /usr/bin/vim
+browser: /usr/bin/firefox
+glamour_style: dark
+check_update: true
+display_hyperlinks: false
+host: gitlab.localhost:8888
+api_host: gitlab.localhost:8888
+api_protocol: http
+no_prompt: false
