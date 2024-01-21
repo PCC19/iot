@@ -131,12 +131,11 @@ git commit -m 'internal'
 git push origin master
 
 echo -e "${BLUE}Setting Up argocd for inspektor-internal...${ENDCOLOR}"
-GITLAB_IP=$(sg docker -c "	
-	kubectl get service gitlab-webservice-default -n gitlab -o jsonpath='{.spec.clusterIP}'")
+
 sg docker -c "
     kubectl delete namespace dev-internal
     kubectl create namespace dev-internal
-    argocd app create inspektor-internal --repo http://${GITLAB_IP}:8181/root/${SRC_REPO_NAME}.git --path deployments --dest-server https://kubernetes.default.svc --sync-policy auto --dest-namespace gitlab-internal
+    argocd app create inspektor-internal --repo http://gitlab-webservice-default.gitlab.svc:8181/root/${SRC_REPO_NAME}.git --path deployments --dest-server https://kubernetes.default.svc --sync-policy auto --dest-namespace gitlab-internal
 "
 
 #adds personal token to root user
